@@ -49,12 +49,10 @@ struct ContentView: View {
                                 isSelected: isSelected,
                                 isCorrect: isSelected ? isCorrect : nil
                             ) {
-//                                guard !viewModel.isQuestionAnsweredOrSkipped(question.id) else { return }
                                 guard !viewModel.selectedAnswers.keys.contains(question.id) else { return }
 
                                 withAnimation {
                                     viewModel.saveAnswer(questionID: question.id, selected: key)
-//                                    nextQuestion()
                                 }
                                 
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
