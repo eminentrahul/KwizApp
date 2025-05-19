@@ -12,6 +12,7 @@ struct ScoreView: View {
     let answered: Int
     let correct: Int
     let incorrect: Int
+    var skipped: Int
     let percentage: Double
 
     var body: some View {
@@ -20,6 +21,7 @@ struct ScoreView: View {
             AnimatedCounter(value: answered, label: "Answered")
             AnimatedCounter(value: correct, label: "Correct")
             AnimatedCounter(value: incorrect, label: "Incorrect")
+            AnimatedCounter(value: skipped, label: "Skipped")
 
             VStack(spacing: 4) {
                 Text(String(format: "%.0f%%", percentage))

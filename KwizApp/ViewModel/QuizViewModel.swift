@@ -17,6 +17,8 @@ class QuizViewModel: ObservableObject {
     private var modelContext: ModelContext
 
     @Published var lastQuestionID: Int?
+    
+    var totalSkipped: Int { skippedQuestions.count }
 
     init(modelContext: ModelContext) {
         self.modelContext = modelContext
@@ -91,5 +93,42 @@ class QuizViewModel: ObservableObject {
     func isCorrect(for question: QuizQuestion, selected: String) -> Bool {
         return question.correctAnswer == selected
     }
+    
+    @Published var skippedQuestions: Set<Int> = [] {
+        didSet {
+            saveSkippedQuestions()
+        }
+    }
+
+    func skipQuestion(questionID: Int) {
+        skippedQuestions.insert(questionID)
+        saveSkippedQuestions()
+    }
+
+    private func saveSkippedQuestions() {
+        let skipped = Array(skippedQuestions)
+        UserDefaults.standard.set(skipped, forKey: "skippedQuestions")
+    }
+
+    private func loadSkippedQuestions() {
+        if let data = UserDefaults.standard.array(forKey: "skippedQuestions") as? [Int] {
+            skippedQuestions = Set(data)
+        }
+    }
+    
+    func isQuestionAnsweredOrSkipped(_ questionID: Int) -> Bool {
+        return selectedAnswers.keys.contains(questionID) || skippedQuestions.contains(questionID)
+    }
+
+    func firstUnansweredQuestionIndex() -> Int {
+        for (index, question) in questions.enumerated() {
+            if !isQuestionAnsweredOrSkipped(question.id) {
+                return index
+            }
+        }
+        return 0 // default to first
+    }
+
+
 }
 

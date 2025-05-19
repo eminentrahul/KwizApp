@@ -9,10 +9,10 @@ import SwiftUI
 import SwiftData
 
 struct ContentView: View {
+    @State private var currentIndex = 0
+    @State private var previousIndex = 0
     @Environment(\.modelContext) private var context
     @StateObject private var viewModel: QuizViewModel
-
-    @State private var scrollTarget: Int?
 
     init() {
         let container = try! ModelContainer(for: AnsweredQuestion.self, AppState.self)
@@ -20,87 +20,97 @@ struct ContentView: View {
     }
 
     var body: some View {
-        NavigationView {
-            VStack(spacing: 0) {
-                ScoreView(
-                    totalQuestions: viewModel.totalQuestions,
-                    answered: viewModel.totalAnswered,
-                    correct: viewModel.totalCorrect,
-                    incorrect: viewModel.totalIncorrect,
-                    percentage: viewModel.percentageCorrect
-                )
+        VStack(spacing: 0) {
+            // Score always on top
+            ScoreView(
+                totalQuestions: viewModel.totalQuestions,
+                answered: viewModel.totalAnswered,
+                correct: viewModel.totalCorrect,
+                incorrect: viewModel.totalIncorrect,
+                skipped: viewModel.totalSkipped,
+                percentage: viewModel.percentageCorrect
+            )
 
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        VStack(spacing: 20) {
-                            ForEach(viewModel.questions) { question in
-                                VStack(alignment: .leading, spacing: 10) {
-                                    Text(question.question)
-                                        .font(.headline)
+            TabView(selection: $currentIndex) {
+                ForEach(viewModel.questions.indices, id: \.self) { index in
+                    let question = viewModel.questions[index]
 
-                                    ForEach(question.options.sorted(by: { $0.key < $1.key }), id: \.key) { key, value in
-                                        let selected = viewModel.selectedAnswers[question.id]
-                                        let isSelected = selected == key
-                                        let isCorrect = isSelected ? viewModel.isCorrect(for: question, selected: key) : nil
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text(question.question)
+                            .font(.title2.bold())
 
-                                        OptionView(
-                                            key: key,
-                                            value: value,
-                                            isSelected: isSelected,
-                                            isCorrect: isSelected ? isCorrect : nil
-                                        ) {
-                                            guard selected == nil else { return }
+                        ForEach(question.options.sorted(by: { $0.key < $1.key }), id: \.key) { key, value in
+                            let isSelected = viewModel.selectedAnswers[question.id] == key
+                            let isCorrect = question.correctAnswer == key
 
-                                            withAnimation {
-                                                viewModel.saveAnswer(questionID: question.id, selected: key)
-                                            }
-
-                                            if let index = viewModel.questions.firstIndex(where: { $0.id == question.id }),
-                                               index + 1 < viewModel.questions.count {
-                                                let nextID = viewModel.questions[index + 1].id
-                                                viewModel.saveScrollPosition(id: nextID)
-                                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                                                    withAnimation {
-                                                        proxy.scrollTo(nextID, anchor: .top)
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
+                            OptionView(
+                                key: key,
+                                value: value,
+                                isSelected: isSelected,
+                                isCorrect: isSelected ? isCorrect : nil
+                            ) {
+                                guard !viewModel.isQuestionAnsweredOrSkipped(question.id) else { return }
+                                withAnimation {
+                                    viewModel.saveAnswer(questionID: question.id, selected: key)
+//                                    nextQuestion()
                                 }
-                                .padding()
-                                .background(Color.white)
-                                .cornerRadius(12)
-                                .shadow(color: .gray.opacity(0.1), radius: 2)
-                                .id(question.id)
-                            }
+                                
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                                    withAnimation {
+                                        nextQuestion()
+                                    }
 
-                            Spacer(minLength: 40)
+                                }
+                            }
+                        }
+
+                        Spacer()
+
+                        Button("Skip Question") {
+                            guard !viewModel.isQuestionAnsweredOrSkipped(question.id) else { return }
+                            withAnimation {
+                                viewModel.skipQuestion(questionID: question.id)
+                                nextQuestion()
+                            }
                         }
                         .padding(.top)
                     }
-                    .onAppear {
-                        if let id = viewModel.lastQuestionID {
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                                withAnimation {
-                                    proxy.scrollTo(id, anchor: .top)
-                                }
-                            }
-                        }
+                    .padding()
+                    .tag(index)
+                }
+            }
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            .animation(.easeInOut, value: currentIndex)
+            .onChange(of: currentIndex) { _, newIndex in
+                let prevQuestion = viewModel.questions[previousIndex]
+                if !viewModel.isQuestionAnsweredOrSkipped(prevQuestion.id) {
+                    viewModel.skipQuestion(questionID: prevQuestion.id)
+                }
+                previousIndex = newIndex
+            }
+        }
+        .onAppear {
+            let firstIndex = viewModel.firstUnansweredQuestionIndex()
+            currentIndex = firstIndex
+            previousIndex = firstIndex
+        }
+        .navigationBarTitle("Indian History Quiz", displayMode: .inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button("Reset") {
+                    withAnimation {
+                        viewModel.reset()
+                        currentIndex = 0
+                        previousIndex = 0
                     }
                 }
             }
-            .navigationTitle("Indian History Quiz")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Reset") {
-                        withAnimation {
-                            viewModel.reset()
-                        }
-                    }
-                }
-            }
+        }
+    }
+
+    func nextQuestion() {
+        if currentIndex + 1 < viewModel.questions.count {
+            currentIndex += 1
         }
     }
 }
