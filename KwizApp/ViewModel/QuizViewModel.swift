@@ -25,6 +25,7 @@ class QuizViewModel: ObservableObject {
         loadQuestions()
         loadAnswers()
         loadLastScrollPosition()
+        loadSkippedQuestions()
     }
 
     func loadQuestions() {
@@ -50,9 +51,24 @@ class QuizViewModel: ObservableObject {
     }
 
     func saveAnswer(questionID: Int, selected: String) {
+        guard let _ = questions.first(where: { $0.id == questionID }) else { return }
+
         selectedAnswers[questionID] = selected
-        let new = AnsweredQuestion(questionID: questionID, selectedOption: selected)
-        modelContext.insert(new)
+
+        // Remove from skipped
+        if skippedQuestions.contains(questionID) {
+            skippedQuestions.remove(questionID)
+            saveSkippedQuestions()
+        }
+
+        //Update or insert answer
+        let existing = try? modelContext.fetch(FetchDescriptor<AnsweredQuestion>())
+        if let existingAnswer = existing?.first(where: { $0.questionID == questionID }) {
+            existingAnswer.selectedOption = selected
+        } else {
+            let new = AnsweredQuestion(questionID: questionID, selectedOption: selected)
+            modelContext.insert(new)
+        }
 
         try? modelContext.save()
     }
