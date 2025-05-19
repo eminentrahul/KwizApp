@@ -6,14 +6,22 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct ContentView: View {
-    @StateObject private var viewModel = QuizViewModel()
+    @Environment(\.modelContext) private var context
+    @StateObject private var viewModel: QuizViewModel
+
+    @State private var scrollTarget: Int?
+
+    init() {
+        let container = try! ModelContainer(for: AnsweredQuestion.self, AppState.self)
+        _viewModel = StateObject(wrappedValue: QuizViewModel(modelContext: container.mainContext))
+    }
 
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
-                // Sticky Score View
                 ScoreView(
                     totalQuestions: viewModel.totalQuestions,
                     answered: viewModel.totalAnswered,
@@ -22,7 +30,6 @@ struct ContentView: View {
                     percentage: viewModel.percentageCorrect
                 )
 
-                // Scrollable Quiz Content
                 ScrollViewReader { proxy in
                     ScrollView {
                         VStack(spacing: 20) {
@@ -42,19 +49,19 @@ struct ContentView: View {
                                             isSelected: isSelected,
                                             isCorrect: isSelected ? isCorrect : nil
                                         ) {
-                                            if selected == nil {
-                                                withAnimation {
-                                                    viewModel.selectedAnswers[question.id] = key
-                                                }
+                                            guard selected == nil else { return }
 
-                                                // Scroll to next question
-                                                if let index = viewModel.questions.firstIndex(where: { $0.id == question.id }),
-                                                   index + 1 < viewModel.questions.count {
-                                                    let next = viewModel.questions[index + 1]
-                                                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                                                        withAnimation {
-                                                            proxy.scrollTo(next.id, anchor: .top)
-                                                        }
+                                            withAnimation {
+                                                viewModel.saveAnswer(questionID: question.id, selected: key)
+                                            }
+
+                                            if let index = viewModel.questions.firstIndex(where: { $0.id == question.id }),
+                                               index + 1 < viewModel.questions.count {
+                                                let nextID = viewModel.questions[index + 1].id
+                                                viewModel.saveScrollPosition(id: nextID)
+                                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                                    withAnimation {
+                                                        proxy.scrollTo(nextID, anchor: .top)
                                                     }
                                                 }
                                             }
@@ -64,20 +71,36 @@ struct ContentView: View {
                                 .padding()
                                 .background(Color.white)
                                 .cornerRadius(12)
-                                .shadow(color: .gray.opacity(0.1), radius: 3, x: 0, y: 2)
-                                .padding(.horizontal)
+                                .shadow(color: .gray.opacity(0.1), radius: 2)
                                 .id(question.id)
                             }
 
                             Spacer(minLength: 40)
                         }
-                        .padding(.top, 10)
+                        .padding(.top)
+                    }
+                    .onAppear {
+                        if let id = viewModel.lastQuestionID {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                                withAnimation {
+                                    proxy.scrollTo(id, anchor: .top)
+                                }
+                            }
+                        }
                     }
                 }
             }
             .navigationTitle("Indian History Quiz")
             .navigationBarTitleDisplayMode(.inline)
-            .background(Color(.systemGroupedBackground))
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Reset") {
+                        withAnimation {
+                            viewModel.reset()
+                        }
+                    }
+                }
+            }
         }
     }
 }
