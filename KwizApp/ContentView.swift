@@ -12,60 +12,72 @@ struct ContentView: View {
 
     var body: some View {
         NavigationView {
-            ScrollViewReader { proxy in
-                List {
-                    Section {
-                        ScoreView(
-                            totalQuestions: viewModel.totalQuestions,
-                            answered: viewModel.totalAnswered,
-                            correct: viewModel.totalCorrect,
-                            incorrect: viewModel.totalIncorrect,
-                            percentage: viewModel.percentageCorrect
-                        )
-                    }
+            VStack(spacing: 0) {
+                // Sticky Score View
+                ScoreView(
+                    totalQuestions: viewModel.totalQuestions,
+                    answered: viewModel.totalAnswered,
+                    correct: viewModel.totalCorrect,
+                    incorrect: viewModel.totalIncorrect,
+                    percentage: viewModel.percentageCorrect
+                )
 
-                    ForEach(viewModel.questions) { question in
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text(question.question)
-                                .font(.headline)
+                // Scrollable Quiz Content
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        VStack(spacing: 20) {
+                            ForEach(viewModel.questions) { question in
+                                VStack(alignment: .leading, spacing: 10) {
+                                    Text(question.question)
+                                        .font(.headline)
 
-                            ForEach(question.options.sorted(by: { $0.key < $1.key }), id: \.key) { key, value in
-                                let selected = viewModel.selectedAnswers[question.id]
-                                let isSelected = selected == key
-                                let isCorrect = isSelected ? viewModel.isCorrect(for: question, selected: key) : nil
+                                    ForEach(question.options.sorted(by: { $0.key < $1.key }), id: \.key) { key, value in
+                                        let selected = viewModel.selectedAnswers[question.id]
+                                        let isSelected = selected == key
+                                        let isCorrect = isSelected ? viewModel.isCorrect(for: question, selected: key) : nil
 
-                                OptionView(
-                                    key: key,
-                                    value: value,
-                                    isSelected: isSelected,
-                                    isCorrect: isSelected ? isCorrect : nil
-                                ) {
-                                    if selected == nil {
-                                        withAnimation {
-                                            viewModel.selectedAnswers[question.id] = key
-                                        }
-
-                                        // Scroll to next question (if available)
-                                        if let currentIndex = viewModel.questions.firstIndex(where: { $0.id == question.id }),
-                                           currentIndex + 1 < viewModel.questions.count {
-                                            let nextQuestion = viewModel.questions[currentIndex + 1]
-                                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                                        OptionView(
+                                            key: key,
+                                            value: value,
+                                            isSelected: isSelected,
+                                            isCorrect: isSelected ? isCorrect : nil
+                                        ) {
+                                            if selected == nil {
                                                 withAnimation {
-                                                    proxy.scrollTo(nextQuestion.id, anchor: .top)
+                                                    viewModel.selectedAnswers[question.id] = key
+                                                }
+
+                                                // Scroll to next question
+                                                if let index = viewModel.questions.firstIndex(where: { $0.id == question.id }),
+                                                   index + 1 < viewModel.questions.count {
+                                                    let next = viewModel.questions[index + 1]
+                                                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                                                        withAnimation {
+                                                            proxy.scrollTo(next.id, anchor: .top)
+                                                        }
+                                                    }
                                                 }
                                             }
                                         }
                                     }
                                 }
+                                .padding()
+                                .background(Color.white)
+                                .cornerRadius(12)
+                                .shadow(color: .gray.opacity(0.1), radius: 3, x: 0, y: 2)
+                                .padding(.horizontal)
+                                .id(question.id)
                             }
+
+                            Spacer(minLength: 40)
                         }
-                        .padding(.vertical, 6)
-                        .id(question.id) // important for ScrollViewReader
+                        .padding(.top, 10)
                     }
                 }
-                .listStyle(.insetGrouped)
-                .navigationTitle("Indian History Quiz")
             }
+            .navigationTitle("Indian History Quiz")
+            .navigationBarTitleDisplayMode(.inline)
+            .background(Color(.systemGroupedBackground))
         }
     }
 }

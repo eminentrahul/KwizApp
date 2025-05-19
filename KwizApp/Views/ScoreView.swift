@@ -15,32 +15,25 @@ struct ScoreView: View {
     let percentage: Double
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("📊 Quiz Progress")
-                .font(.headline)
+        HStack(spacing: 20) {
+            AnimatedCounter(value: totalQuestions, label: "Total")
+            AnimatedCounter(value: answered, label: "Answered")
+            AnimatedCounter(value: correct, label: "Correct")
+            AnimatedCounter(value: incorrect, label: "Incorrect")
 
-            HStack {
-                Text("Total Questions: \(totalQuestions)")
-                Spacer()
-                Text("Answered: \(answered)")
+            VStack(spacing: 4) {
+                Text(String(format: "%.0f%%", percentage))
+                    .font(.title2)
+                    .fontWeight(.bold)
+                Text("Accuracy")
+                    .font(.caption)
+                    .foregroundColor(.gray)
             }
-
-            HStack {
-                Text("✔️ Correct: \(correct)")
-                Spacer()
-                Text("❌ Incorrect: \(incorrect)")
-            }
-
-            ProgressView(value: percentage, total: 100)
-                .accentColor(.green)
-
-            Text(String(format: "Accuracy: %.1f%%", percentage))
-                .font(.subheadline)
-                .foregroundColor(.secondary)
         }
         .padding()
         .background(Color(.systemGray6))
-        .cornerRadius(10)
-        .padding(.horizontal)
+        .cornerRadius(12)
+        .padding([.horizontal, .top])
+        .shadow(color: .gray.opacity(0.1), radius: 4, x: 0, y: 2)
     }
 }
