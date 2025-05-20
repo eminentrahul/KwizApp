@@ -19,19 +19,46 @@ struct ScoreView: View {
     var body: some View {
         NavigationLink(destination: ScoreDetailView(viewModel: viewModel)) {
             HStack(spacing: 20) {
-                AnimatedCounter(value: totalQuestions, label: "Total")
-                AnimatedCounter(value: answered, label: "Answered")
-                AnimatedCounter(value: correct, label: "Correct")
-                AnimatedCounter(value: incorrect, label: "Incorrect")
-                AnimatedCounter(value: skipped, label: "Skipped")
                 
-                VStack(spacing: 4) {
-                    Text(String(format: "%.0f%%", percentage))
-                        .font(.title2)
-                        .fontWeight(.bold)
-                    Text("Accuracy")
-                        .font(.caption)
-                        .foregroundColor(.gray)
+                VStack(alignment: .leading, spacing: 20) {
+                    Rectangle()
+                        .foregroundStyle(.gray)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 30)
+                        .clipShape(.buttonBorder)
+                        .overlay {
+                            Text("Total - \(totalQuestions)")
+                                .foregroundStyle(.white)
+                                .font(.callout)
+                                .fontWeight(.semibold)
+                        }
+                    
+                    VStack {
+                        HStack (spacing: 10){
+                            AnimatedCounter(value: answered, color: .blue)
+                            AnimatedCounter(value: correct, color: .green)
+                        }
+                        
+                        HStack(spacing: 10) {
+                            AnimatedCounter(value: incorrect, color: .red)
+                            AnimatedCounter(value: skipped, color: .orange)
+                        }
+                    }
+                   
+                }.padding()
+                
+                VStack {
+                    HStack(spacing: 20) {
+                        CircularStatView(value: correct, total: answered, label: "Correct", color: .green, ringSize: 80, fontSize: 16)
+                        CircularStatView(value: incorrect, total: answered, label: "Incorrect", color: .red, ringSize: 80, fontSize: 16)
+                    }
+                    .padding(.bottom, 10)
+                    
+                    HStack(spacing: 20) {
+                        CircularStatView(value: skipped, total: totalQuestions, label: "Skipped", color: .orange, ringSize: 80, fontSize: 16)
+                        CircularStatView(value: answered, total: totalQuestions, label: "Answered", color: .blue, ringSize: 80, fontSize: 16)
+                    }
+                    
                 }
             }
             .padding()
