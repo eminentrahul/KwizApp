@@ -41,13 +41,16 @@ struct ContentView: View {
 
                         ForEach(question.options.sorted(by: { $0.key < $1.key }), id: \.key) { key, value in
                             let isSelected = viewModel.selectedAnswers[question.id] == key
-                            let isCorrect = question.correctAnswer == key
-
+                            let isCorrectAnswer = question.correctAnswer == key
+                            let selectedKey = viewModel.selectedAnswers[question.id]
+                            let isAnswered = selectedKey != nil
+                            let isUserWrong = isAnswered && selectedKey != question.correctAnswer
+                            
                             OptionView(
                                 key: key,
                                 value: value,
                                 isSelected: isSelected,
-                                isCorrect: isSelected ? isCorrect : nil
+                                isCorrect: isSelected ? isCorrectAnswer : (isUserWrong && isCorrectAnswer ? true : nil),
                             ) {
                                 guard !viewModel.selectedAnswers.keys.contains(question.id) else { return }
 

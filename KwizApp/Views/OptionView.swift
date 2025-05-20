@@ -48,7 +48,7 @@ struct OptionView: View {
             } else if isCorrect == false {
                 return .red
             }
-        } else if isCorrect == true {
+        } else if isCorrect == true && !isSelected {
             return .green
         }
         return .blue
