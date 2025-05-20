@@ -22,89 +22,92 @@ struct ContentView: View {
     var body: some View {
         VStack(spacing: 0) {
             // Score always on top
-            ScoreView(
-                totalQuestions: viewModel.totalQuestions,
-                answered: viewModel.totalAnswered,
-                correct: viewModel.totalCorrect,
-                incorrect: viewModel.totalIncorrect,
-                skipped: viewModel.totalSkipped,
-                percentage: viewModel.percentageCorrect
-            )
-
-            TabView(selection: $currentIndex) {
-                ForEach(viewModel.questions.indices, id: \.self) { index in
-                    let question = viewModel.questions[index]
-
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text(question.question)
-                            .font(.title2.bold())
-
-                        ForEach(question.options.sorted(by: { $0.key < $1.key }), id: \.key) { key, value in
-                            let isSelected = viewModel.selectedAnswers[question.id] == key
-                            let isCorrectAnswer = question.correctAnswer == key
-                            let selectedKey = viewModel.selectedAnswers[question.id]
-                            let isAnswered = selectedKey != nil
-                            let isUserWrong = isAnswered && selectedKey != question.correctAnswer
+            NavigationStack {
+                ScoreView(
+                    totalQuestions: viewModel.totalQuestions,
+                    answered: viewModel.totalAnswered,
+                    correct: viewModel.totalCorrect,
+                    incorrect: viewModel.totalIncorrect,
+                    skipped: viewModel.totalSkipped,
+                    percentage: viewModel.percentageCorrect,
+                    viewModel: viewModel
+                )
+                
+                TabView(selection: $currentIndex) {
+                    ForEach(viewModel.questions.indices, id: \.self) { index in
+                        let question = viewModel.questions[index]
+                        
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text(question.question)
+                                .font(.title2.bold())
                             
-                            OptionView(
-                                key: key,
-                                value: value,
-                                isSelected: isSelected,
-                                isCorrect: isSelected ? isCorrectAnswer : (isUserWrong && isCorrectAnswer ? true : nil),
-                            ) {
-                                guard !viewModel.selectedAnswers.keys.contains(question.id) else { return }
-
-                                withAnimation {
-                                    viewModel.saveAnswer(questionID: question.id, selected: key)
-                                }
+                            ForEach(question.options.sorted(by: { $0.key < $1.key }), id: \.key) { key, value in
+                                let isSelected = viewModel.selectedAnswers[question.id] == key
+                                let isCorrectAnswer = question.correctAnswer == key
+                                let selectedKey = viewModel.selectedAnswers[question.id]
+                                let isAnswered = selectedKey != nil
+                                let isUserWrong = isAnswered && selectedKey != question.correctAnswer
                                 
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                                OptionView(
+                                    key: key,
+                                    value: value,
+                                    isSelected: isSelected,
+                                    isCorrect: isSelected ? isCorrectAnswer : (isUserWrong && isCorrectAnswer ? true : nil),
+                                ) {
+                                    guard !viewModel.selectedAnswers.keys.contains(question.id) else { return }
+                                    
                                     withAnimation {
-                                        nextQuestion()
+                                        viewModel.saveAnswer(questionID: question.id, selected: key)
                                     }
-
+                                    
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                                        withAnimation {
+                                            nextQuestion()
+                                        }
+                                        
+                                    }
                                 }
                             }
-                        }
-
-                        Spacer()
-
-                        Button("Skip Question") {
-                            guard !viewModel.isQuestionAnsweredOrSkipped(question.id) else { return }
-                            withAnimation {
-                                viewModel.skipQuestion(questionID: question.id)
-                                nextQuestion()
+                            
+                            Spacer()
+                            
+                            Button("Skip Question") {
+                                guard !viewModel.isQuestionAnsweredOrSkipped(question.id) else { return }
+                                withAnimation {
+                                    viewModel.skipQuestion(questionID: question.id)
+                                    nextQuestion()
+                                }
                             }
+                            .padding(.top)
                         }
-                        .padding(.top)
+                        .padding()
+                        .tag(index)
                     }
-                    .padding()
-                    .tag(index)
+                }
+                .tabViewStyle(.page(indexDisplayMode: .never))
+                .animation(.easeInOut, value: currentIndex)
+                .onChange(of: currentIndex) { _, newIndex in
+                    let prevQuestion = viewModel.questions[previousIndex]
+                    if !viewModel.isQuestionAnsweredOrSkipped(prevQuestion.id) {
+                        viewModel.skipQuestion(questionID: prevQuestion.id)
+                    }
+                    previousIndex = newIndex
                 }
             }
-            .tabViewStyle(.page(indexDisplayMode: .never))
-            .animation(.easeInOut, value: currentIndex)
-            .onChange(of: currentIndex) { _, newIndex in
-                let prevQuestion = viewModel.questions[previousIndex]
-                if !viewModel.isQuestionAnsweredOrSkipped(prevQuestion.id) {
-                    viewModel.skipQuestion(questionID: prevQuestion.id)
-                }
-                previousIndex = newIndex
+            .onAppear {
+                let firstIndex = viewModel.firstUnansweredQuestionIndex()
+                currentIndex = firstIndex
+                previousIndex = firstIndex
             }
-        }
-        .onAppear {
-            let firstIndex = viewModel.firstUnansweredQuestionIndex()
-            currentIndex = firstIndex
-            previousIndex = firstIndex
-        }
-        .navigationBarTitle("Indian History Quiz", displayMode: .inline)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button("Reset") {
-                    withAnimation {
-                        viewModel.reset()
-                        currentIndex = 0
-                        previousIndex = 0
+            .navigationBarTitle("Indian History Quiz", displayMode: .inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Reset") {
+                        withAnimation {
+                            viewModel.reset()
+                            currentIndex = 0
+                            previousIndex = 0
+                        }
                     }
                 }
             }
